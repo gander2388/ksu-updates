@@ -18,15 +18,14 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Clone upstream and generate update.json
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          PROTO="https:"
-          REPO="Mess1on/Soc-Freqcap"
-          git clone --depth=1 "${PROTO}//://github.com{REPO}.git" /tmp/upstream
+          gh repo clone Mess1on/Soc-Freqcap /tmp/upstream -- --depth=1
 
           python3 - << 'EOF'
           import json, os, re, urllib.parse, sys
 
-          P = "https:" + "//"
           REPO = "Mess1on/Soc-Freqcap"
           UPSTREAM_DIR = "/tmp/upstream"
 
@@ -46,19 +45,20 @@ jobs:
               print(f"Skip update, zip file not found: {filename}")
               sys.exit(0)
 
-          raw_host = P + "://githubusercontent.com"
-          proxy_host = P + "://gh-proxy.com"
-          gh_host = P + "github.com"
+          P = "https:" + "//"
+          GH = "github" + ".com"
+          RAW = "raw.githubusercontent" + ".com"
+          PROXY = "gh-proxy" + ".com"
 
-          raw_zip_url = f"{raw_host}/{REPO}/main/releases/{urllib.parse.quote(filename)}"
-          raw_log_url = f"{raw_host}/{REPO}/main/CHANGELOG.md"
+          raw_zip_url = f"{P}{RAW}/{REPO}/main/releases/{urllib.parse.quote(filename)}"
+          raw_log_url = f"{P}{RAW}/{REPO}/main/CHANGELOG.md"
 
           new_manifest = {
               "version": version,
               "versionCode": version_code,
-              "zipUrl": proxy_host + raw_zip_url,
-              "changelog": proxy_host + raw_log_url,
-              "homepage": f"{gh_host}/{REPO}"
+              "zipUrl": f"{P}{PROXY}/{raw_zip_url}",
+              "changelog": f"{P}{PROXY}/{raw_log_url}",
+              "homepage": f"{P}{GH}/{REPO}"
           }
 
           with open("update.json", "w", encoding="utf-8") as f:
