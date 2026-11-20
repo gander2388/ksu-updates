@@ -17,7 +17,8 @@ jobs:
 
       - name: Clone upstream and generate update.json
         run: |
-          git clone --depth=1 https://github.com /tmp/upstream
+          git clone --depth=1 https://github.com/Mess1on/Soc-Freqcap.git
+ /tmp/upstream
 
           python3 - << 'EOF'
           import json, os, re, urllib.parse, sys
@@ -52,7 +53,8 @@ jobs:
               "versionCode": version_code,
               "zipUrl": PROXY_PREFIX + raw_zip_url,
               "changelog": PROXY_PREFIX + "https://githubusercontent.com",
-              "homepage": "https://github.com"
+              "homepage": "https://github.com/Mess1on/Soc-Freqcap
+"
           }
 
           with open("update.json", "w", encoding="utf-8") as f:
