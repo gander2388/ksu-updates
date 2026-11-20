@@ -1,0 +1,66 @@
+name: Sync Soc-Freqcap Stable
+
+on:
+  schedule:
+    - cron: '0 */6 * * *' # 每 6 小时自动检查一次上游
+  workflow_dispatch:       # 支持随时在网页端手动点击运行
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Fetch upstream stable release
+        run: |
+          python3 - << 'EOF'
+          import json, re, urllib.request, urllib.parse, sys
+
+          UPSTREAM_JSON = "https://githubusercontent.com"
+          RAW_BASE = "https://githubusercontent.com"
+          PROXY_PREFIX = "https://gh-proxy.com"
+
+          data = json.loads(urllib.request.urlopen(UPSTREAM_JSON, timeout=15).read().decode("utf-8"))
+          version = data["version"].strip()
+          version_code = data["versionCode"]
+
+          # 严格过滤：只放行纯数字正式版（如 V2.3、V2.4），跳过 Beta/Test
+          if not re.fullmatch(r"V\d+(\.\d+)+", version, re.IGNORECASE):
+              print(f"Skip pre-release: {version}")
+              sys.exit(0)
+
+          filename = f"Soc智能限频_{version}.zip"
+          raw_zip_url = RAW_BASE + urllib.parse.quote(filename)
+
+          # 确认上游 releases/ 文件夹里确实已传好压缩包，防止 404
+          try:
+              with urllib.request.urlopen(urllib.request.Request(raw_zip_url, method="HEAD"), timeout=15) as resp:
+                  if resp.status != 200:
+                      sys.exit(0)
+          except Exception as e:
+              print(f"File not ready ({filename}): {e}")
+              sys.exit(0)
+
+          new_manifest = {
+              "version": version,
+              "versionCode": version_code,
+              "zipUrl": PROXY_PREFIX + raw_zip_url,
+              "changelog": PROXY_PREFIX + "https://githubusercontent.com",
+              "homepage": "https://github.com"
+          }
+
+          with open("update.json", "w", encoding="utf-8") as f:
+              json.dump(new_manifest, f, ensure_ascii=False, indent=2)
+              f.write("\n")
+          EOF
+
+      - name: Commit and push if changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@://github.com"
+          git add update.json
+          git diff --staged --quiet || (git commit -m "chore: sync stable update.json" && git push)
